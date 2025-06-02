@@ -20,6 +20,9 @@ models = [
 def get_embeddings_from_db(model: str, dataset_path: Union[str, Path], save_path: Union[str, Path]):
     assert model in models, f"{model} is not supported. Models supported: {models}"
 
+    DeepFace.build_model(model)
+    
+
     dataset_path = Path(dataset_path)
     save_path = Path(save_path)
 
@@ -48,6 +51,7 @@ def get_embeddings_from_db(model: str, dataset_path: Union[str, Path], save_path
                     model_name=model,
                     enforce_detection=False,
                     align=True,
+                    detector_backend="yolov8"
                 )
 
                 # Deepface.represent may send a list of embeddings vectors, so getting only the highest confidence detection here.
@@ -72,8 +76,10 @@ def get_embeddings_from_db(model: str, dataset_path: Union[str, Path], save_path
 
     print(f"Saved embeddings ({len(embeddings)} to {save_path / 'embeddings.pkl'})")
 
-def get_image_embeddings(images: Union[str, Path, List[Union[Path, str]]], model: str = "Facenet512"):
+def get_image_embeddings(images: Union[str, Path, List[Union[Path, str]]], model: str = "ArcFace"):
     assert model in models, f"{model} is not supported. Models supported: {models}"
+
+    DeepFace.build_model(model)
     
     if isinstance(images, (str, Path)):
         images = [images]
@@ -83,11 +89,12 @@ def get_image_embeddings(images: Union[str, Path, List[Union[Path, str]]], model
     for img_path in images:
         try:
             embedding = DeepFace.represent(
-                img_path=img_path,
-                model_name=model,
-                enforce_detection=True,
-                align=True
-            )
+                    img_path=img_path,
+                    model_name=model,
+                    enforce_detection=False,
+                    align=True,
+                    detector_backend="yolov8"
+                )
             
             # Handle multiple faces case (select highest confidence)
             if isinstance(embedding, list) and len(embedding) > 0:
@@ -111,4 +118,4 @@ def get_image_embeddings(images: Union[str, Path, List[Union[Path, str]]], model
     
     return results
 
-get_embeddings_from_db("ArcFace", Path("/home/fabio/Downloads/fotos/"), Path("/home/fabio/Repos/"))
+#get_embeddings_from_db("ArcFace", Path("/home/fabio/Documents/Dataset_IA_2025"), Path("/home/fabio/Repos/"))
