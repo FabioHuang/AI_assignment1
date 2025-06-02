@@ -15,8 +15,3 @@ The classes in the dataset are:
     - Marcelo
     - Wanderson
     - Zito
-
-And the unknown people are:
-    - Alexandre
-    - Gabriel
-    - Vinicius

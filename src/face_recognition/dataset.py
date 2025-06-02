@@ -1,15 +1,18 @@
 from pathlib import Path
-from typing import Union, Tuple, Dict
+from typing import Union, Tuple, Dict, List
 import pickle
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+from sklearn.preprocessing import LabelEncoder
 
 class FaceEmbeddingDataset:
-    def __init__(self, pickle_path: Union[str, Path]):
+    def __init__(self, pickle_path: Union[str, Path], exclude_classes: List[str] = None):
         self.pickle_path = Path(pickle_path)
         self.embeddings = []
         self.labels = []
+        self.label_encoder = LabelEncoder()
+        self.exclude_classes = exclude_classes or ["desconhecido"]
         self.load_data()
         
     def load_data(self):
@@ -23,17 +26,29 @@ class FaceEmbeddingDataset:
             try:
                 while True:
                     data = pickle.load(f)
-                    all_embeddings.append(data['embeddings'])
-                    # Make sure labels are stored as strings, not converted to integers
+                    embeddings = data['embeddings']
                     if 'labels' in data:
-                        all_labels.extend([str(label) for label in data['labels']])
+                        labels = [str(label) for label in data['labels']]
+                        
+                        if self.exclude_classes:
+                            keep_indices = [i for i, label in enumerate(labels) if label not in self.exclude_classes]
+                            if keep_indices:
+                                filtered_embeddings = embeddings[keep_indices]
+                                filtered_labels = [labels[i] for i in keep_indices]
+                                all_embeddings.append(filtered_embeddings)
+                                all_labels.extend(filtered_labels)
+                        else:
+                            all_embeddings.append(embeddings)
+                            all_labels.extend(labels)
             except EOFError:
-                pass  # End of file reached
+                pass
         
         if all_embeddings:
             self.embeddings = np.vstack(all_embeddings)
             self.labels = np.array(all_labels)
             print(f"Loaded {len(self.labels)} samples with {len(set(self.labels))} unique classes")
+            if self.exclude_classes:
+                print(f"Excluded classes: {self.exclude_classes}")
         else:
             self.embeddings = np.array([])
             self.labels = np.array([])
@@ -46,16 +61,17 @@ class FaceEmbeddingDataset:
         if len(self.embeddings) == 0:
             raise ValueError("Dataset is empty. Cannot split.")
         
+        encoded_labels = self.label_encoder.fit_transform(self.labels)
+        
         train_val_emb, test_emb, train_val_labels, test_labels = train_test_split(
             self.embeddings, 
-            self.labels,
+            encoded_labels,
             test_size=test_size,
             random_state=random_state,
-            stratify=self.labels  # Maintain class distribution
+            stratify=encoded_labels
         )
         
         if val_size > 0:
-            # Adjust validation size relative to train+val size
             relative_val_size = val_size / (1 - test_size)
             
             train_emb, val_emb, train_labels, val_labels = train_test_split(
@@ -63,7 +79,7 @@ class FaceEmbeddingDataset:
                 train_val_labels,
                 test_size=relative_val_size,
                 random_state=random_state,
-                stratify=train_val_labels  # Maintain class distribution
+                stratify=train_val_labels
             )
             
             return {
@@ -76,13 +92,3 @@ class FaceEmbeddingDataset:
                 'train': (train_val_emb, train_val_labels),
                 'test': (test_emb, test_labels)
             }
-    
-    def get_class_distribution(self) -> Dict[str, int]:
-        unique_labels, counts = np.unique(self.labels, return_counts=True)
-        return dict(zip(unique_labels, counts))
-
-    def __len__(self) -> int:
-        return len(self.embeddings)
-    
-    def get_data(self) -> Tuple[np.ndarray, np.ndarray]:
-        return self.embeddings, self.labels

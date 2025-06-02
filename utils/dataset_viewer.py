@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, List
 from matplotlib import pyplot as plt
 from PIL import Image
 import numpy as np
@@ -9,7 +9,8 @@ import warnings
 
 def view_dataset(dataset_path: Union[Path, str],
                  samples_per_class: int,
-                 save_path: Optional[Union[Path, str]] = None):
+                 save_path: Optional[Union[Path, str]] = None,
+                 exclude_classes: List[str] = None):
     '''
     Generate an image with dataset samples given the sample size per class,
     and if given, save the image in the save_path.
@@ -18,6 +19,7 @@ def view_dataset(dataset_path: Union[Path, str],
         - dataset_path:         Path or string to dataset directory.
         - samples_per_class:    Number of samples per class shown.
         - save_path:            Path or string to save directory.
+        - exclude_classes:      List of class names to exclude from visualization.
     '''
 
     dataset_path = Path(dataset_path)
@@ -30,6 +32,10 @@ def view_dataset(dataset_path: Union[Path, str],
     # Iterating the folder dataset and selecting random samples for each class
     for cls_dir in dataset_path.iterdir():
         if cls_dir.is_dir():
+            # Skip excluded classes
+            if exclude_classes and cls_dir.name in exclude_classes:
+                continue
+                
             cls_labels.append(cls_dir.name)
             _imgs = []
 
@@ -71,7 +77,6 @@ def view_dataset(dataset_path: Union[Path, str],
     else:
         plt.show()
 
-if __name__ == "__main__":
-    # Update this path to your dataset location
-    dataset_path = Path("/home/fabio/Downloads/fotos")
-    view_dataset(dataset_path, samples_per_class=5, save_path="../dataset_samples.png")
+# if __name__ == "__main__":
+#     dataset_path = Path("/home/fabio/Documents/Dataset_IA_2025")
+#     view_dataset(dataset_path, samples_per_class=5, save_path="../dataset_samples.png", exclude_classes=["desconhecido"])
